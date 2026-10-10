@@ -30,8 +30,11 @@ export default {
         warning: '#d97706',
       },
       fontFamily: {
-        display: ['"Plus Jakarta Sans"', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
+        sans: ['"Open Sans"', '"Century Gothic"', 'sans-serif'],
+        serif: ['"Open Sans"', '"Century Gothic"', 'sans-serif'],
+        mono: ['"Open Sans"', '"Century Gothic"', 'sans-serif'],
+        display: ['"Open Sans"', '"Century Gothic"', 'sans-serif'],
+        body: ['"Open Sans"', '"Century Gothic"', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: '0.25rem',
