@@ -13,6 +13,9 @@ import AboutUsCms from './pages/AboutUsCms';
 import Team from './pages/Team';
 import Reviews from './pages/Reviews';
 
+
+// test comment added.
+
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize);
 
