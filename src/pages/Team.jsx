@@ -1,15 +1,11 @@
-import { useState } from 'react';
-
-const initialUsers = [
-  { id: 'demo-1', name: 'Julian Vance', email: 'julian@toppristine.com', role: 'admin', status: 'online' },
-  { id: 'demo-2', name: 'Emma Richards', email: 'emma.r@toppristine.com', role: 'coordinator', status: 'active' },
-  { id: 'demo-3', name: 'Marcus Chen', email: 'm.chen@toppristine.com', role: 'estimator', status: 'active' },
-  { id: 'demo-4', name: 'Sophia Rossi', email: 's.rossi@toppristine.com', role: 'architect', status: 'pending' },
-];
+import { useEffect, useState } from 'react';
+import apiClient from '../api/client';
+import { resetUserPassword } from '../api/users';
+import useAuthStore from '../stores/authStore';
 
 const roleLabels = {
   admin: 'Master Admin',
-  super_admin: 'Master Admin',
+  super_admin: 'Super Admin',
   editor: 'Editor',
   coordinator: 'Client Coordinator',
   architect: 'Lead Architect',
@@ -23,7 +19,7 @@ const roleOptions = [
 ];
 
 function getUserId(user) {
-  return user.id || user._id;
+  return user._id || user.id;
 }
 
 function getInitials(user) {
@@ -48,40 +44,63 @@ function getStatusLabel(user) {
 }
 
 export default function Team() {
-  const [users, setUsers] = useState(initialUsers);
+  const currentUser = useAuthStore((state) => state.user);
+  const canInviteUsers = ['super_admin', 'admin'].includes(currentUser?.role);
+  const canManageUsers = currentUser?.role === 'super_admin';
+  const canResetPasswords = currentUser?.role === 'super_admin';
+  const availableRoleOptions = roleOptions.filter((option) => (
+    canManageUsers || option.value !== 'super_admin'
+  ));
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [actionError, setActionError] = useState('');
   const [message, setMessage] = useState('');
   const [openMenu, setOpenMenu] = useState(null);
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
-  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: '' });
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: '', password: '', confirmPassword: '' });
   const [activePanel, setActivePanel] = useState('invite');
-  const [resetUserId, setResetUserId] = useState(initialUsers[0].id);
+  const [resetUserId, setResetUserId] = useState('');
   const [resetForm, setResetForm] = useState({ password: '', confirmPassword: '' });
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
+  const [resetSubmitting, setResetSubmitting] = useState(false);
   const selectedResetUser = users.find((item) => String(getUserId(item)) === resetUserId);
 
-  const handleInvite = (event) => {
+  useEffect(() => {
+    apiClient.get('/users').then(({ data }) => {
+      setUsers(data.users || []);
+    }).catch(() => {}).finally(() => setLoadingUsers(false));
+  }, []);
+
+  const handleInvite = async (event) => {
     event.preventDefault();
     setInviteError('');
     setInviteSuccess('');
-    if (users.some((user) => user.email.toLowerCase() === inviteForm.email.trim().toLowerCase())) {
-      setInviteError('A team member with this email already exists.');
+    if (inviteForm.password.length < 8) {
+      setInviteError('The password must be at least 8 characters.');
       return;
     }
-    setUsers((items) => [...items, {
-      id: `demo-${Date.now()}`,
-      name: inviteForm.name.trim(),
-      email: inviteForm.email.trim(),
-      role: inviteForm.role,
-      status: 'pending',
-    }]);
-    setInviteForm({ name: '', email: '', role: '' });
-    setInviteSuccess('Demo invitation added to the roster. No email was sent.');
+    if (inviteForm.password !== inviteForm.confirmPassword) {
+      setInviteError('The passwords do not match.');
+      return;
+    }
+    try {
+      const { data } = await apiClient.post('/users/invite', {
+        name: inviteForm.name.trim(),
+        email: inviteForm.email.trim(),
+        role: inviteForm.role,
+        password: inviteForm.password,
+      });
+      setUsers((items) => [...items, data.user]);
+      setInviteForm({ name: '', email: '', role: '', password: '', confirmPassword: '' });
+      setInviteSuccess('Invitation sent successfully.');
+    } catch (err) {
+      setInviteError(err?.response?.data?.message || 'Failed to send invitation.');
+    }
   };
 
-  const handlePasswordReset = (event) => {
+  const handlePasswordReset = async (event) => {
     event.preventDefault();
     setResetError('');
     setResetSuccess('');
@@ -97,275 +116,248 @@ export default function Team() {
       setResetError('The passwords do not match.');
       return;
     }
-
-    setResetSuccess(`Demo reset completed for ${selectedResetUser.name || selectedResetUser.email}. The account password was not changed.`);
-    setResetForm({ password: '', confirmPassword: '' });
+    setResetSubmitting(true);
+    try {
+      await resetUserPassword(getUserId(selectedResetUser), resetForm.password);
+      setResetSuccess(`Password reset completed for ${selectedResetUser.name || selectedResetUser.email}.`);
+      setResetForm({ password: '', confirmPassword: '' });
+    } catch (err) {
+      setResetError(err?.response?.data?.message || 'Failed to reset password.');
+    } finally {
+      setResetSubmitting(false);
+    }
   };
 
-  const handleResend = (user) => {
-    setActionError('');
-    setMessage(`Demo only: no invitation email was sent to ${user.email}.`);
-  };
-
-  const handleRoleChange = (user, role) => {
+  const handleRoleChange = async (user, role) => {
     const id = getUserId(user);
     setActionError('');
     setMessage('');
-    setUsers((items) => items.map((item) => getUserId(item) === id ? { ...item, role } : item));
-    setMessage(`Demo role updated for ${user.name || user.email}.`);
+    try {
+      await apiClient.patch(`/users/${id}`, { role });
+      setUsers((items) => items.map((item) => getUserId(item) === id ? { ...item, role } : item));
+      setMessage(`Role updated for ${user.name || user.email}.`);
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Failed to update role.');
+    }
     setOpenMenu(null);
   };
 
-  const handleRemove = (user) => {
+  const handleRemove = async (user) => {
     const id = getUserId(user);
     if (!window.confirm(`Remove portal access for ${user.name || user.email}?`)) return;
     setActionError('');
     setMessage('');
-    setUsers((items) => items.filter((item) => getUserId(item) !== id));
-    setMessage(`Demo access removed for ${user.name || user.email}.`);
+    try {
+      await apiClient.delete(`/users/${id}`);
+      setUsers((items) => items.filter((item) => getUserId(item) !== id));
+      setMessage(`Access removed for ${user.name || user.email}.`);
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Failed to remove user.');
+    }
     setOpenMenu(null);
   };
 
   return (
-    <div className="p-8 font-sans bg-slate-50 min-h-screen">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Team Provisioning &amp; Access</h1>
+    <div className="min-h-screen bg-slate-50 px-5 py-8 font-sans sm:px-8">
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-indigo-700">Administration</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Team</h1>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-500">Manage your team, access levels, and account security.</p>
         </div>
+        <div className="flex items-center gap-5 rounded-lg border border-slate-200 bg-white px-4 py-3">
+          <div>
+            <p className="text-xs text-slate-500">Team members</p>
+            <p className="mt-0.5 text-lg font-semibold text-slate-900">{users.length}</p>
+          </div>
+          <div className="h-8 w-px bg-slate-200" />
+          <div>
+            <p className="text-xs text-slate-500">Pending invites</p>
+            <p className="mt-0.5 text-lg font-semibold text-slate-900">
+              {users.filter((user) => getStatusLabel(user).toLowerCase().includes('pending')).length}
+            </p>
+          </div>
+        </div>
+      </header>
 
       {(actionError || message) && (
-        <div role={actionError ? 'alert' : 'status'} className={`mb-5 rounded-lg px-4 py-3 text-sm ${actionError ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
+        <div role={actionError ? 'alert' : 'status'} className={`mb-5 rounded-lg border px-4 py-3 text-sm ${actionError ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
           {actionError || message}
         </div>
       )}
 
-      <div className="flex gap-8 items-start">
-        <div className="flex-[2] bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-slate-200 text-slate-600 flex items-center justify-center shadow-inner">
-                <span className="material-symbols-outlined text-[18px]">shield_person</span>
+      {loadingUsers && (
+        <div className="flex items-center justify-center py-20 text-sm text-slate-500">Loading team…</div>
+      )}
+
+      {!loadingUsers && (
+        <div className={`grid items-start gap-6 ${canInviteUsers || canResetPasswords ? 'xl:grid-cols-[minmax(0,1.7fr)_minmax(340px,0.9fr)]' : 'grid-cols-1'}`}>
+          <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Team members</h2>
+                <p className="mt-1 text-sm text-slate-500">Review roles and account access.</p>
               </div>
-              <h2 className="text-sm font-bold text-slate-900">Active Admin Roster</h2>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                {users.length} {users.length === 1 ? 'member' : 'members'}
+              </span>
             </div>
-            <div className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">{users.length} Team Members</div>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/50">
-                  <th className="px-6 py-3 text-[10px] font-bold uppercase text-slate-500 tracking-wider">Member Details</th>
-                  <th className="px-6 py-3 text-[10px] font-bold uppercase text-slate-500 tracking-wider">Operational Role</th>
-                  <th className="px-6 py-3 text-[10px] font-bold uppercase text-slate-500 tracking-wider">Security Status</th>
-                  <th className="px-6 py-3 text-[10px] font-bold uppercase text-slate-500 tracking-wider text-right">Access</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.length === 0 && (
-                  <tr><td colSpan="4" className="px-6 py-8 text-center text-sm text-slate-500">No team members found.</td></tr>
-                )}
-                {users.map((user) => {
-                  const id = getUserId(user);
-                  const status = getStatusLabel(user);
-                  const pending = status.toLowerCase().includes('pending');
-                  const role = String(user.role || '').toLowerCase();
-                  return (
-                    <tr key={id || user.email} className={`hover:bg-slate-50 transition-colors ${openMenu === id ? 'relative z-30' : ''}`}>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shadow-sm">{getInitials(user)}</div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-900">{user.name || user.fullName || 'Invited member'}</p>
-                            <p className="text-[11px] text-slate-500 font-mono mt-0.5">{user.email}</p>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] text-left">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/70">
+                    <th className="px-5 py-3 text-xs font-semibold text-slate-500 sm:px-6">Member</th>
+                    <th className="px-5 py-3 text-xs font-semibold text-slate-500">Role</th>
+                    <th className="px-5 py-3 text-xs font-semibold text-slate-500">Status</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 sm:px-6">Access</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.length === 0 && (
+                    <tr><td colSpan="4" className="px-6 py-12 text-center text-sm text-slate-500">No team members found.</td></tr>
+                  )}
+                  {users.map((user) => {
+                    const id = getUserId(user);
+                    const statusLabel = getStatusLabel(user);
+                    const pending = statusLabel.toLowerCase().includes('pending');
+                    const role = String(user.role || '').toLowerCase();
+                    return (
+                      <tr key={id || user.email} className={`transition-colors hover:bg-slate-50/70 ${openMenu === id ? 'relative z-30' : ''}`}>
+                        <td className="px-5 py-4 sm:px-6">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-xs font-semibold text-indigo-700">{getInitials(user)}</div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-slate-900">{user.name || user.fullName || 'Invited member'}</p>
+                              <p className="mt-0.5 truncate text-xs text-slate-500">{user.email}</p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4"><span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded uppercase tracking-wider">{roleLabels[role] || role || 'Unassigned'}</span></td>
-                      <td className="px-6 py-4">
-                        <span className={`flex items-center gap-1.5 text-[11px] font-semibold ${pending ? 'text-amber-600' : 'text-slate-500'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${pending ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>{status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="inline-flex items-center justify-end gap-3 whitespace-nowrap">
-                          {pending && <button type="button" onClick={() => handleResend(user)} className="text-indigo-600 hover:text-indigo-800 text-[10px] font-bold uppercase transition-colors">Resend</button>}
-                          <div className="relative inline-block">
-                            <button type="button" aria-label={`Manage ${user.name || user.email}`} aria-expanded={openMenu === id} onClick={() => setOpenMenu(openMenu === id ? null : id)} className="text-slate-400 hover:text-slate-900 transition-colors">
-                              <span className="material-symbols-outlined text-[18px]">more_vert</span>
-                            </button>
-                            {openMenu === id && (
-                              <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-slate-200 bg-white p-2 text-left shadow-xl ring-1 ring-black/5">
-                                <label className="block px-2 pt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400" htmlFor={`role-${id}`}>Change role</label>
-                                <select id={`role-${id}`} value={role} onChange={(event) => handleRoleChange(user, event.target.value)} className="my-1 w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs text-slate-700">
-                                  {role && !roleOptions.some((option) => option.value === role) && <option value={role}>{roleLabels[role] || role}</option>}
-                                  {roleOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                </select>
-                                <button type="button" onClick={() => handleRemove(user)} className="w-full rounded-md px-2 py-1.5 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50">Remove access</button>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="inline-flex rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">{roleLabels[role] || role || 'Unassigned'}</span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium ${pending ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${pending ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right sm:px-6">
+                          {canManageUsers ? (
+                            <div className="inline-flex items-center justify-end gap-3 whitespace-nowrap">
+                              <div className="relative inline-block">
+                                <button type="button" aria-label={`Manage ${user.name || user.email}`} aria-expanded={openMenu === id} onClick={() => setOpenMenu(openMenu === id ? null : id)} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900">
+                                  <span className="material-symbols-outlined text-[20px]">more_horiz</span>
+                                </button>
+                                {openMenu === id && (
+                                  <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-lg border border-slate-200 bg-white p-2 text-left shadow-lg">
+                                    <label className="block px-2 pt-1 text-xs font-medium text-slate-500" htmlFor={`role-${id}`}>Change role</label>
+                                    <select id={`role-${id}`} value={role} onChange={(event) => handleRoleChange(user, event.target.value)} className="my-1 w-full rounded-md border border-slate-200 px-2 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                      {role && !roleOptions.some((option) => option.value === role) && <option value={role}>{roleLabels[role] || role}</option>}
+                                      {roleOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                    </select>
+                                    <button type="button" onClick={() => handleRemove(user)} className="w-full rounded-md px-2 py-2 text-left text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50">Remove access</button>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                            </div>
+                          ) : <span className="text-xs text-slate-400">View only</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-        <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -z-10"></div>
-          <div role="tablist" aria-label="Team actions" className="mb-6 flex rounded-lg bg-slate-100 p-1">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePanel === 'invite'}
-                onClick={() => setActivePanel('invite')}
-                className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${activePanel === 'invite' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                Send invitation
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activePanel === 'reset'}
-                onClick={() => setActivePanel('reset')}
-                className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${activePanel === 'reset' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                Reset password
-              </button>
-          </div>
+          {(canInviteUsers || canResetPasswords) && <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div role="tablist" aria-label="Team actions" className="flex border-b border-slate-200 px-5 pt-4 sm:px-6">
+              {canInviteUsers && <button type="button" role="tab" aria-selected={activePanel === 'invite'} onClick={() => setActivePanel('invite')} className={`border-b-2 px-3 pb-3 text-sm font-medium transition-colors ${activePanel === 'invite' ? 'border-indigo-700 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Invite member</button>}
+              {canResetPasswords && <button type="button" role="tab" aria-selected={activePanel === 'reset'} onClick={() => setActivePanel('reset')} className={`border-b-2 px-3 pb-3 text-sm font-medium transition-colors ${activePanel === 'reset' ? 'border-indigo-700 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Reset password</button>}
+            </div>
 
-          {activePanel === 'invite' && (
-            <>
-              <div className="mb-8">
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Provision New Architect / Staff</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">Add a demo team member to the roster. Invitation email delivery is not enabled in demo mode.</p>
-              </div>
-
-              <form onSubmit={handleInvite} className="space-y-5">
-                <div>
-                  <label htmlFor="team-name" className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Full Legal Name</label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">badge</span>
-                    <input id="team-name" type="text" required value={inviteForm.name} onChange={(event) => setInviteForm((form) => ({ ...form, name: event.target.value }))} placeholder="e.g. Robert Lang" className="w-full h-11 pl-10 pr-4 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium text-slate-900" />
+            <div className="p-5 sm:p-6">
+              {activePanel === 'invite' && canInviteUsers && (
+                <>
+                  <div className="mb-6">
+                    <h3 className="text-base font-semibold text-slate-900">Invite a team member</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">Add a member to the roster. An invitation email will be sent.</p>
                   </div>
-                </div>
-
-                <div>
-                  <label htmlFor="team-email" className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Work Email</label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">mail</span>
-                    <input id="team-email" type="email" required value={inviteForm.email} onChange={(event) => setInviteForm((form) => ({ ...form, email: event.target.value }))} placeholder="name@toppristine.com" className="w-full h-11 pl-10 pr-4 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium text-slate-900" />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="team-role" className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Role Assignment</label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">admin_panel_settings</span>
-                    <select id="team-role" required value={inviteForm.role} onChange={(event) => setInviteForm((form) => ({ ...form, role: event.target.value }))} className="w-full h-11 pl-10 pr-4 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-900 appearance-none cursor-pointer">
-                      <option value="">Select an operational role…</option>
-                      {roleOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </select>
-                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px] pointer-events-none">expand_more</span>
-                  </div>
-                </div>
-
-                {inviteError && <p role="alert" className="text-sm text-rose-600">{inviteError}</p>}
-                {inviteSuccess && <p role="status" className="text-sm text-emerald-600">{inviteSuccess}</p>}
-                <div className="pt-4">
-                  <button type="submit" className="w-full h-12 bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-sm rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined text-[18px]">forward_to_inbox</span>Add Demo Team Member
-                  </button>
-                </div>
-              </form>
-            </>
-          )}
-
-          {activePanel === 'reset' && (
-            <>
-              <div className="mb-6">
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
-                  <span className="material-symbols-outlined">lock_reset</span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Reset a team member’s password</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">Choose a team member and enter a new password. No reset link will be sent.</p>
-              </div>
-              <form onSubmit={handlePasswordReset} className="space-y-5">
-                <div>
-                  <label htmlFor="reset-team-member" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Team member</label>
-                  <select
-                    id="reset-team-member"
-                    required
-                    value={selectedResetUser ? resetUserId : ''}
-                    onChange={(event) => {
-                      setResetUserId(event.target.value);
-                      setResetError('');
-                      setResetSuccess('');
-                      setResetForm({ password: '', confirmPassword: '' });
-                    }}
-                    className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="" disabled>Select a team member</option>
-                    {users.map((teamUser) => (
-                      <option key={getUserId(teamUser)} value={getUserId(teamUser)}>{teamUser.name || teamUser.email} · {teamUser.email}</option>
-                    ))}
-                  </select>
-                </div>
-                {selectedResetUser && (
-                  <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">{getInitials(selectedResetUser)}</div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-800">{selectedResetUser.name || 'Team member'}</p>
-                      <p className="truncate text-xs text-slate-500">{selectedResetUser.email}</p>
+                  <form onSubmit={handleInvite} className="space-y-4">
+                    <div>
+                      <label htmlFor="team-name" className="mb-1.5 block text-sm font-medium text-slate-700">Full name</label>
+                      <input id="team-name" type="text" required value={inviteForm.name} onChange={(event) => setInviteForm((form) => ({ ...form, name: event.target.value }))} placeholder="e.g. Robert Lang" className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
                     </div>
-                    <span className="material-symbols-outlined ml-auto text-emerald-600">verified_user</span>
+                    <div>
+                      <label htmlFor="team-email" className="mb-1.5 block text-sm font-medium text-slate-700">Work email</label>
+                      <input id="team-email" type="email" required value={inviteForm.email} onChange={(event) => setInviteForm((form) => ({ ...form, email: event.target.value }))} placeholder="name@toppristine.com" className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+                    </div>
+                    <div>
+                      <label htmlFor="team-role" className="mb-1.5 block text-sm font-medium text-slate-700">Role</label>
+                      <select id="team-role" required value={inviteForm.role} onChange={(event) => setInviteForm((form) => ({ ...form, role: event.target.value }))} className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="">Select a role</option>
+                        {availableRoleOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="invite-password" className="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
+                      <input id="invite-password" type="password" autoComplete="new-password" required minLength={8} value={inviteForm.password} onChange={(event) => setInviteForm((form) => ({ ...form, password: event.target.value }))} placeholder="Enter an initial password" className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+                    </div>
+                    <div>
+                      <label htmlFor="invite-confirm-password" className="mb-1.5 block text-sm font-medium text-slate-700">Confirm password</label>
+                      <input id="invite-confirm-password" type="password" autoComplete="new-password" required minLength={8} value={inviteForm.confirmPassword} onChange={(event) => setInviteForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="Enter the password again" className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+                    </div>
+                    {inviteError && <p role="alert" className="text-sm text-rose-600">{inviteError}</p>}
+                    {inviteSuccess && <p role="status" className="text-sm text-emerald-700">{inviteSuccess}</p>}
+                    <button type="submit" className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-indigo-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                      <span className="material-symbols-outlined text-[18px]">person_add</span> Add team member
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {activePanel === 'reset' && canResetPasswords && (
+                <>
+                  <div className="mb-6">
+                    <h3 className="text-base font-semibold text-slate-900">Reset a password</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">Choose a team member and set a new password.</p>
                   </div>
-                )}
-                <div>
-                  <label htmlFor="new-team-password" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">New password</label>
-                  <input
-                    id="new-team-password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    minLength={8}
-                    value={resetForm.password}
-                    onChange={(event) => setResetForm((form) => ({ ...form, password: event.target.value }))}
-                    placeholder="Enter a new password"
-                    className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="confirm-team-password" className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Confirm new password</label>
-                  <input
-                    id="confirm-team-password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    minLength={8}
-                    value={resetForm.confirmPassword}
-                    onChange={(event) => setResetForm((form) => ({ ...form, confirmPassword: event.target.value }))}
-                    placeholder="Enter the new password again"
-                    className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                </div>
-                <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
-                  Demo mode: submitting this form does not update the account or send an email. A backend password-reset endpoint is needed to securely apply the change.
-                </div>
-                {resetError && <p role="alert" className="text-sm text-rose-600">{resetError}</p>}
-                {resetSuccess && <p role="status" className="text-sm text-emerald-700">{resetSuccess}</p>}
-                <button type="submit" disabled={!selectedResetUser} className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-indigo-700 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-60">
-                  <span className="material-symbols-outlined text-[18px]">lock_reset</span>
-                  Reset password
-                </button>
-              </form>
-            </>
-          )}
+                  <form onSubmit={handlePasswordReset} className="space-y-4">
+                    <div>
+                      <label htmlFor="reset-team-member" className="mb-1.5 block text-sm font-medium text-slate-700">Team member</label>
+                      <select id="reset-team-member" required value={selectedResetUser ? resetUserId : ''} onChange={(event) => { setResetUserId(event.target.value); setResetError(''); setResetSuccess(''); setResetForm({ password: '', confirmPassword: '' }); }} className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                        <option value="" disabled>Select a team member</option>
+                        {users.map((u) => <option key={getUserId(u)} value={getUserId(u)}>{u.name || u.email} · {u.email}</option>)}
+                      </select>
+                    </div>
+                    {selectedResetUser && (
+                      <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-xs font-semibold text-indigo-700">{getInitials(selectedResetUser)}</div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-800">{selectedResetUser.name || 'Team member'}</p>
+                          <p className="truncate text-xs text-slate-500">{selectedResetUser.email}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <label htmlFor="new-team-password" className="mb-1.5 block text-sm font-medium text-slate-700">New password</label>
+                      <input id="new-team-password" type="password" autoComplete="new-password" required minLength={8} value={resetForm.password} onChange={(event) => setResetForm((form) => ({ ...form, password: event.target.value }))} placeholder="Enter a new password" className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+                    </div>
+                    <div>
+                      <label htmlFor="confirm-team-password" className="mb-1.5 block text-sm font-medium text-slate-700">Confirm new password</label>
+                      <input id="confirm-team-password" type="password" autoComplete="new-password" required minLength={8} value={resetForm.confirmPassword} onChange={(event) => setResetForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="Enter the password again" className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+                    </div>
+                    {resetError && <p role="alert" className="text-sm text-rose-600">{resetError}</p>}
+                    {resetSuccess && <p role="status" className="text-sm text-emerald-700">{resetSuccess}</p>}
+                    <button type="submit" disabled={!selectedResetUser || resetSubmitting} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-indigo-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">{resetSubmitting ? 'Resetting…' : 'Reset password'}</button>
+                  </form>
+                </>
+              )}
+            </div>
+          </section>}
         </div>
-      </div>
+      )}
     </div>
   );
 }

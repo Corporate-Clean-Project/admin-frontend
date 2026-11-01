@@ -15,6 +15,11 @@ export async function updateUser(id, payload) {
   return data.user;
 }
 
+export async function resetUserPassword(id, password) {
+  const { data } = await apiClient.patch(`/users/${id}/reset-password`, { password });
+  return data;
+}
+
 export async function deleteUser(id) {
   const { data } = await apiClient.delete(`/users/${id}`);
   return data;

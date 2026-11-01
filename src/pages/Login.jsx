@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../stores/authStore';
 
 export default function Login() {
-  const { login } = useAuth();
+  const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,24 +27,21 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex font-sans bg-white">
-      
-      {/* Left Column - Login Form */}
       <div className="w-full lg:w-5/12 xl:w-1/3 p-8 sm:p-12 md:p-16 flex flex-col justify-center shrink-0">
         <div className="w-full max-w-sm mx-auto flex flex-col">
-          
           <div className="flex items-center gap-3 mb-12">
             <div className="w-10 h-10 bg-indigo-700 text-white rounded font-bold flex items-center justify-center font-serif text-2xl shadow-sm">
               T
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-slate-900 text-lg leading-tight">Top Pristine</span>
+              <span className="font-bold text-slate-900 text-lg leading-tight">Pristine</span>
               <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Corporate Admin Workspace</span>
             </div>
           </div>
 
           <div className="mb-8">
-             <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Sign in to your account</h1>
-             <p className="text-sm text-slate-500 font-medium">Enter your credentials to access the management portal.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Sign in to your account</h1>
+            <p className="text-sm text-slate-500 font-medium">Enter your credentials to access the management portal.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -62,15 +59,12 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            
+
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold tracking-wider text-slate-600 uppercase" htmlFor="password">
                   Workstation Password
                 </label>
-                <Link to="/forgot-password" className="text-xs font-bold text-indigo-600 hover:underline">
-                  Forgot workstation password?
-                </Link>
               </div>
               <div className="relative">
                 <input
@@ -95,7 +89,7 @@ export default function Login() {
             </div>
 
             {error && <p className="text-sm text-rose-600 font-medium bg-rose-50 p-3 rounded-lg border border-rose-100">{error}</p>}
-            
+
             <button
               type="submit"
               disabled={loading}
@@ -108,25 +102,21 @@ export default function Login() {
           <p className="mt-8 text-[11px] text-slate-400 font-medium text-center flex items-center justify-center gap-1.5">
             <span className="material-symbols-outlined text-[14px]">lock</span> Restricted access. All login attempts are recorded and monitored.
           </p>
-          
         </div>
       </div>
 
-      {/* Right Column - Image */}
       <div className="hidden lg:flex flex-1 relative bg-slate-900 overflow-hidden">
-        {/* Placeholder image mapping to the mockup's right side */}
         <div className="absolute inset-0 z-0">
           <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=1600&h=900" alt="Architecture" className="w-full h-full object-cover opacity-60 mix-blend-overlay" />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
         </div>
-        
+
         <div className="relative z-10 p-12 mt-auto text-white max-w-xl">
-           <span className="bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-4 inline-block">Architecture & Mastery</span>
-           <h2 className="text-3xl font-serif leading-tight mb-4 text-slate-50">Precision in every detail.<br/>Excellence in every build.</h2>
-           <p className="text-sm text-slate-300 font-medium leading-relaxed">The internal management platform for Top Pristine artisans, architects, and project coordinators. Ensure all client communications and site specifications are handled with utmost discretion.</p>
+          <span className="bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-4 inline-block">Architecture & Mastery</span>
+          <h2 className="text-3xl font-serif leading-tight mb-4 text-slate-50">Precision in every detail.<br />Excellence in every build.</h2>
+          <p className="text-sm text-slate-300 font-medium leading-relaxed">The internal management platform for Pristine artisans, architects, and project coordinators. Ensure all client communications and site specifications are handled with utmost discretion.</p>
         </div>
       </div>
-
     </div>
   );
 }

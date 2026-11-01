@@ -1,6 +1,6 @@
 # admin-frontend
 
-Admin CMS console for **Top Pristine Luxury Craft** — React + Vite + Tailwind CSS.
+Admin CMS console for **Pristine Luxury Craft** — React + Vite + Tailwind CSS.
 Authenticates against `common-backend` with JWT (access + refresh tokens, auto-refresh
 on 401) and manages inquiries, CMS content, and the internal team.
 

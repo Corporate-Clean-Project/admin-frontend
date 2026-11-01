@@ -1,49 +1,86 @@
-import { useRef, useState } from 'react';
-import { saveContent } from '../api/content';
-
-const initialCredentials = [
-  'Master Joinery Guild',
-  'Structural Masonry Cert',
-  'Architectural Contracting',
-];
-
-const initialTags = [
-  'Architectural Millwork & Smoked Oak',
-  'Fluted Stone & Bookmatched Marble',
-  'Hand-Aged Brushed Brass',
-];
-
-const initialMilestones = [
-  { year: '2010', title: 'Foundation', details: 'Started career with a rigorous focus on quality, meticulous attention to structural carpentry, and residential restorations.' },
-  { year: '2015', title: 'Guild & Scale Expansion', details: 'Expanded operational capacity and assembled elite tradesmen, mastering complex bespoke cabinetry and private architectural commissions.' },
-  { year: '2018', title: 'Prestige Architecture', details: 'Built a trusted, premier reputation through dedication, executing full-scale penthouse and estate architecture in high-demand metropolitan enclaves.' },
-  { year: '2024', title: 'Benchmark (Present)', details: 'Continuing to grow, innovate sustainable luxury fabrication, and set gold benchmarks for high-integrity architectural millwork and finishes.' },
-];
-
-const initialGallery = [
-  { src: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=400&h=300', title: 'Highland Kitchen & Wine Vault', category: 'Culinary Architecture' },
-  { src: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=400&h=300', title: 'Noir Marble Sanctuary', category: 'Stonework & Wellness' },
-  { src: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&q=80&w=400&h=300', title: 'Yorkville Monolith Estate', category: 'Private Residence' },
-  { src: '', title: '', category: 'Private Residence' },
-];
+import { useRef, useState, useEffect } from 'react';
+import useContentStore from '../stores/contentStore';
+import { uploadToCloudinary } from '../lib/cloudinary';
 
 export default function AboutUsCms() {
   const formRef = useRef(null);
   const portraitInputRef = useRef(null);
-  const workshopInputRef = useRef(null);
   const galleryInputRefs = useRef([]);
-  const bioRef = useRef(null);
-  const [credentials, setCredentials] = useState(initialCredentials);
-  const [tags, setTags] = useState(initialTags);
-  const [milestones, setMilestones] = useState(initialMilestones);
+
+  const { fetchContent, saveContent: saveContentApi, error: contentError } = useContentStore();
+
+  const [credentials, setCredentials] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [milestones, setMilestones] = useState([]);
   const [milestoneDraft, setMilestoneDraft] = useState(null);
   const [milestoneError, setMilestoneError] = useState('');
-  const [gallery, setGallery] = useState(initialGallery);
+  const [gallery, setGallery] = useState([
+    { src: '', title: '', category: 'Private Residence' },
+    { src: '', title: '', category: 'Private Residence' },
+    { src: '', title: '', category: 'Private Residence' },
+    { src: '', title: '', category: 'Private Residence' },
+  ]);
   const [portrait, setPortrait] = useState('');
-  const [workshopImage, setWorkshopImage] = useState('');
-  const [cropWorkshop, setCropWorkshop] = useState(false);
+  const [portraitFile, setPortraitFile] = useState(null);
+  const [workshopContent, setWorkshopContent] = useState({
+    image: '',
+    heading: 'Our Approach to Facility Care',
+    narrative: 'We create dependable cleaning plans around each facility, its people, and its schedule.',
+  });
+  const [commitments, setCommitments] = useState([
+    {
+      title: 'Cleaning That Fits Your Needs',
+      description: 'Choose from office cleaning, janitorial services, deep sanitization, post-construction cleaning, and floor care.',
+    },
+    {
+      title: 'A Plan for Your Schedule',
+      description: 'We work with you to find a cleaning frequency and start date that suit your facility and daily operations.',
+    },
+    {
+      title: 'Responsive Support',
+      description: 'Our team aims to respond to inquiries within 24 business hours. 24/7 emergency response is available for contracted clients.',
+    },
+  ]);
+  const [galleryFiles, setGalleryFiles] = useState([null, null, null, null]);
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetchContent('about-us').then((data) => {
+      if (!data) return;
+      if (data.credentials) setCredentials(data.credentials);
+      if (data.tags) setTags(data.tags);
+      if (data.milestones) setMilestones(data.milestones);
+      if (data.founderPortrait) setPortrait(data.founderPortrait);
+      setWorkshopContent({
+        image: data.workshopImage || '',
+        heading: data.workshopHeading || 'Our Approach to Facility Care',
+        narrative: data.workshopNarrative || 'We create dependable cleaning plans around each facility, its people, and its schedule.',
+      });
+      if (Array.isArray(data.commitments) && data.commitments.length) setCommitments(data.commitments);
+      if (data.gallery) {
+        const g = [...data.gallery];
+        while (g.length < 4) g.push({ src: '', title: '', category: 'Private Residence' });
+        setGallery(g);
+      }
+      if (formRef.current && data) {
+        const elements = formRef.current.elements;
+        if (data.founderName && elements.founderName) elements.founderName.value = data.founderName;
+        if (data.founderTitle && elements.founderTitle) elements.founderTitle.value = data.founderTitle;
+        if (data.biography && elements.biography) elements.biography.value = data.biography;
+        if (data.statOne && elements.statOne) elements.statOne.value = data.statOne;
+        if (data.statTwo && elements.statTwo) elements.statTwo.value = data.statTwo;
+        if (data.statThree && elements.statThree) elements.statThree.value = data.statThree;
+        if (data.commitmentEyebrow && elements.commitmentEyebrow) elements.commitmentEyebrow.value = data.commitmentEyebrow;
+        if (data.commitmentHeading && elements.commitmentHeading) elements.commitmentHeading.value = data.commitmentHeading;
+        if (data.commitmentNarrative && elements.commitmentNarrative) elements.commitmentNarrative.value = data.commitmentNarrative;
+        if (data.commitmentFooter && elements.commitmentFooter) elements.commitmentFooter.value = data.commitmentFooter;
+        if (data.commitmentCta && elements.commitmentCta) elements.commitmentCta.value = data.commitmentCta;
+      }
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, [fetchContent]);
 
   const addChip = (event, setItems) => {
     if (event.key !== 'Enter' && event.key !== ',') return;
@@ -55,78 +92,44 @@ export default function AboutUsCms() {
     }
   };
 
-  const handleImageSelection = (event, setImage) => {
+  const handleImageSelection = (event, setImage, setFile) => {
     const [file] = event.target.files || [];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setStatus('Please select an image file.');
-      return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      setStatus('Image must be 20 MB or smaller.');
-      return;
-    }
+    if (!file.type.startsWith('image/')) { setStatus('Please select an image file.'); return; }
+    if (file.size > 20 * 1024 * 1024) { setStatus('Image must be 20 MB or smaller.'); return; }
     setImage(URL.createObjectURL(file));
+    setFile(file);
     event.target.value = '';
   };
 
   const handleGallerySelection = (index, event) => {
     const [file] = event.target.files || [];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setStatus('Please select an image file.');
-      return;
-    }
+    if (!file.type.startsWith('image/')) { setStatus('Please select an image file.'); return; }
+    if (file.size > 20 * 1024 * 1024) { setStatus('Image must be 20 MB or smaller.'); return; }
     const src = URL.createObjectURL(file);
     setGallery((items) => {
       const updated = [...items];
       updated[index] = { ...(updated[index] || { title: '', category: 'Private Residence' }), src };
       return updated;
     });
+    setGalleryFiles((files) => {
+      const updated = [...files];
+      updated[index] = file;
+      return updated;
+    });
     event.target.value = '';
   };
 
-  const handleGalleryFiles = (files) => {
-    const availableSlots = 4 - gallery.filter((item) => item?.src).length;
-    const fileList = Array.from(files);
-    const selectedFiles = fileList.filter((file) => file.type.startsWith('image/') && file.size <= 20 * 1024 * 1024).slice(0, availableSlots);
-    if (selectedFiles.length === 0) {
-      setStatus(availableSlots === 0
-        ? 'All four gallery slots are in use. Remove an image before adding another.'
-        : fileList.some((file) => file.size > 20 * 1024 * 1024)
-          ? 'Image files must be 20 MB or smaller.'
-          : 'Please select image files.');
-      return;
-    }
-    setGallery((items) => {
-      const updated = [...items];
-      for (const file of selectedFiles) {
-        const emptyIndex = updated.findIndex((item) => !item?.src);
-        const index = emptyIndex === -1 ? updated.length : emptyIndex;
-        updated[index] = { src: URL.createObjectURL(file), title: file.name.replace(/\.[^.]+$/, ''), category: 'Private Residence' };
-      }
-      return updated;
-    });
-  };
-
   const addMilestone = () => setMilestoneDraft({ index: null, year: '', title: '', details: '' });
-
-  const editMilestone = (index) => {
-    setMilestoneDraft({ index, ...milestones[index] });
-  };
+  const editMilestone = (index) => setMilestoneDraft({ index, ...milestones[index] });
 
   const saveMilestoneDraft = () => {
     const { index, year, title, details } = milestoneDraft;
     const milestone = { year: year.trim(), title: title.trim(), details: details.trim() };
-    if (!milestone.year || !milestone.title || !milestone.details) {
-      setMilestoneError('Complete all fields before saving.');
-      return;
-    }
-    if (index === null) {
-      setMilestones((items) => [...items, milestone]);
-    } else {
-      setMilestones((items) => items.map((item, itemIndex) => itemIndex === index ? milestone : item));
-    }
+    if (!milestone.year || !milestone.title || !milestone.details) { setMilestoneError('Complete all fields before saving.'); return; }
+    if (index === null) setMilestones((items) => [...items, milestone]);
+    else setMilestones((items) => items.map((item, i) => i === index ? milestone : item));
     setMilestoneDraft(null);
     setMilestoneError('');
   };
@@ -135,34 +138,52 @@ export default function AboutUsCms() {
     event.preventDefault();
     setSaving(true);
     setStatus('');
-    const fields = Array.from(formRef.current.elements).reduce((values, field, index) => {
-      if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) || field.type === 'file') return values;
-      const label = field.name ||
-        field.labels?.[0]?.textContent.trim() ||
-        field.closest('div')?.querySelector('label')?.textContent.trim().replace(/\s+/g, '_').toLowerCase() ||
-        `field_${index}`;
-      values[label] = field.value;
-      return values;
-    }, {});
+
     try {
-      await saveContent('about-us', {
+      let portraitUrl = portrait;
+      if (portraitFile) {
+        portraitUrl = await uploadToCloudinary(portraitFile);
+        setPortrait(portraitUrl);
+        setPortraitFile(null);
+      }
+
+      const uploadedGallery = [...gallery];
+      const updatedGalleryFiles = [...galleryFiles];
+      for (let i = 0; i < galleryFiles.length; i++) {
+        if (galleryFiles[i]) {
+          const url = await uploadToCloudinary(galleryFiles[i]);
+          uploadedGallery[i] = { ...uploadedGallery[i], src: url };
+          updatedGalleryFiles[i] = null;
+        }
+      }
+      setGallery(uploadedGallery);
+      setGalleryFiles(updatedGalleryFiles);
+
+      const fields = {};
+      const elements = formRef.current.elements;
+      ['founderName', 'founderTitle', 'biography', 'statOne', 'statTwo', 'statThree', 'commitmentEyebrow', 'commitmentHeading', 'commitmentNarrative', 'commitmentFooter', 'commitmentCta'].forEach((name) => {
+        if (elements[name]) fields[name] = elements[name].value;
+      });
+
+      await saveContentApi('about-us', {
         ...fields,
-        founderPortrait: portrait.startsWith('blob:') ? '' : portrait,
-        workshopImage: workshopImage.startsWith('blob:') ? '' : workshopImage,
+        founderPortrait: portraitUrl && !portraitUrl.startsWith('blob:') ? portraitUrl : '',
+        workshopImage: workshopContent.image,
+        workshopHeading: workshopContent.heading,
+        workshopNarrative: workshopContent.narrative,
+        commitments,
         credentials,
         tags,
         milestones,
-        gallery: gallery.map((project) => ({
-          ...project,
-          src: project.src.startsWith('blob:') ? '' : project.src,
+        gallery: uploadedGallery.map((p) => ({
+          ...p,
+          src: p.src && !p.src.startsWith('blob:') ? p.src : '',
         })),
       });
-      const hasLocalImage = portrait.startsWith('blob:') || workshopImage.startsWith('blob:') || gallery.some((project) => project.src.startsWith('blob:'));
-      setStatus(hasLocalImage
-        ? 'Content saved. Newly selected images are local previews and were not uploaded.'
-        : 'About Us content saved and published.');
+
+      setStatus('About Us content saved and published.');
     } catch (error) {
-      setStatus(error.response?.data?.message || 'Unable to save About Us content. Please try again.');
+      setStatus(error?.response?.data?.message || error?.message || 'Unable to save About Us content. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -170,41 +191,18 @@ export default function AboutUsCms() {
 
   const discardChanges = () => {
     if (!window.confirm('Discard all unsaved changes?')) return;
-    formRef.current?.reset();
-    setCredentials(initialCredentials);
-    setTags(initialTags);
-    setMilestones(initialMilestones);
-    setMilestoneDraft(null);
-    setGallery(initialGallery);
-    setPortrait('');
-    setWorkshopImage('');
-    setCropWorkshop(false);
-    setStatus('Unsaved changes discarded.');
+    window.location.reload();
   };
 
-  const applyBioFormatting = (format) => {
-    const field = bioRef.current;
-    if (!field) return;
-    const start = field.selectionStart;
-    const end = field.selectionEnd;
-    const selectedText = field.value.slice(start, end);
-    const wrapper = format === 'link' ? '[' : format === 'quote' ? '> ' : format;
-    const suffix = format === 'link' ? '](url)' : format === 'quote' ? '' : format;
-    const replacement = format === 'link' ? `${wrapper}${selectedText || 'link text'}${suffix}` : `${wrapper}${selectedText || 'text'}${suffix}`;
-    field.setRangeText(replacement, start, end, 'select');
-    field.focus();
-  };
+  if (!loaded) {
+    return <div className="p-8 flex items-center justify-center min-h-screen text-sm text-slate-500">Loading content…</div>;
+  }
 
   return (
     <form ref={formRef} onSubmit={saveChanges} className="p-8 font-sans bg-slate-50 min-h-screen">
-
-      {/* Top Header */}
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 opacity-0 hidden">About Us CMS</h1>
         <div className="flex items-center gap-4">
-          <button type="button" title="Preview About Us page" onClick={() => window.open('https://toppristine.com/about-us', '_blank', 'noopener,noreferrer')} className="flex items-center gap-2 p-2 rounded hover:bg-slate-200 text-slate-500 transition-colors">
-            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-          </button>
           <button type="button" onClick={discardChanges} className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 flex items-center gap-2">
             <span className="material-symbols-outlined text-[16px]">refresh</span> Discard Changes
           </button>
@@ -214,10 +212,9 @@ export default function AboutUsCms() {
         </div>
       </div>
       {status && <p role="status" className="mb-4 rounded-lg bg-white px-4 py-2 text-sm text-slate-700 shadow-sm">{status}</p>}
+      {contentError && <p role="alert" className="mb-4 rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-700">{contentError}</p>}
 
       <div className="max-w-full mx-auto space-y-8 pb-12">
-
-        {/* Section 1 */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <div className="flex items-center gap-3">
@@ -238,12 +235,12 @@ export default function AboutUsCms() {
               <div className="w-full aspect-[3/4] bg-slate-200 rounded-lg overflow-hidden flex flex-col items-center justify-center text-slate-400 relative">
                 {portrait ? <img src={portrait} alt="Founder portrait preview" className="w-full h-full object-cover" /> : <span className="font-bold text-xs">No portrait selected</span>}
               </div>
-              <input ref={portraitInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleImageSelection(event, setPortrait)} />
+              <input ref={portraitInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleImageSelection(event, setPortrait, setPortraitFile)} />
               <div className="flex items-center gap-2 mt-2">
                 <button type="button" onClick={() => portraitInputRef.current?.click()} className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold py-2 rounded flex items-center justify-center gap-2 transition-colors">
                   <span className="material-symbols-outlined text-[14px]">image</span> Upload New Photo
                 </button>
-                <button type="button" onClick={() => setPortrait('')} aria-label="Remove founder portrait" className="bg-slate-100 hover:bg-slate-200 text-slate-500 w-8 h-8 rounded flex items-center justify-center transition-colors">
+                <button type="button" onClick={() => { setPortrait(''); setPortraitFile(null); }} aria-label="Remove founder portrait" className="bg-slate-100 hover:bg-slate-200 text-slate-500 w-8 h-8 rounded flex items-center justify-center transition-colors">
                   <span className="material-symbols-outlined text-[14px]">delete</span>
                 </button>
               </div>
@@ -267,23 +264,14 @@ export default function AboutUsCms() {
                   <span className="text-[10px] text-slate-400">Press Enter or comma to create chip</span>
                 </div>
                 <div className="w-full bg-slate-50 border border-slate-100 rounded p-2 flex flex-wrap gap-2">
-                  {credentials.map((item) => <span key={item} className="bg-white border border-slate-200 text-slate-700 text-[11px] font-semibold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">{item}<button type="button" onClick={() => setCredentials((items) => items.filter((entry) => entry !== item))} aria-label={`Remove ${item}`} className="material-symbols-outlined text-[12px] hover:text-rose-500">close</button></span>)}
+                  {credentials.map((item) => <span key={item} className="bg-white border border-slate-200 text-slate-700 text-[11px] font-semibold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">{item}<button type="button" onClick={() => setCredentials((items) => items.filter((e) => e !== item))} aria-label={`Remove ${item}`} className="material-symbols-outlined text-[12px] hover:text-rose-500">close</button></span>)}
                   <input type="text" placeholder="+ Add certification..." onKeyDown={(event) => addChip(event, setCredentials)} className="bg-transparent text-[11px] outline-none min-w-[120px]" />
                 </div>
               </div>
 
               <div>
                 <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Public Biography Narrative</label>
-                <div className="w-full border border-slate-200 rounded overflow-hidden">
-                  <div className="bg-slate-50 border-b border-slate-200 px-3 py-1.5 flex items-center gap-3 text-slate-500">
-                    <button type="button" onClick={() => applyBioFormatting('**')} aria-label="Bold selected text" className="material-symbols-outlined text-[14px] hover:text-slate-900">format_bold</button>
-                    <button type="button" onClick={() => applyBioFormatting('_')} aria-label="Italicize selected text" className="material-symbols-outlined text-[14px] hover:text-slate-900">format_italic</button>
-                    <button type="button" onClick={() => applyBioFormatting('link')} aria-label="Insert link" className="material-symbols-outlined text-[14px] hover:text-slate-900">link</button>
-                    <button type="button" onClick={() => applyBioFormatting('quote')} aria-label="Quote selected text" className="material-symbols-outlined text-[14px] hover:text-slate-900">format_quote</button>
-                    <span className="text-[10px] font-mono ml-auto">Markdown & Rich text supported</span>
-                  </div>
-                  <textarea ref={bioRef} name="biography" className="w-full h-32 p-3 text-sm text-slate-800 bg-indigo-50/30 focus:outline-none resize-none leading-relaxed" defaultValue="Over the past decade and a half, Top Pristine has evolved into a private atelier of elite master carpenters and stonemasons. Under the direct supervision of Julian Vance, every commission marries timeless hand-carved joinery with precise, ultra-modern structural specifications for the world's most discerning residences."></textarea>
-                </div>
+                <textarea name="biography" className="w-full h-32 rounded border border-slate-200 bg-indigo-50/30 p-3 text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500" defaultValue=""></textarea>
               </div>
 
               <div>
@@ -303,69 +291,67 @@ export default function AboutUsCms() {
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
 
-        {/* Section 2 */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded bg-teal-600 text-white flex items-center justify-center shadow-inner">
-                <span className="material-symbols-outlined text-[18px]">construction</span>
+                <span className="material-symbols-outlined text-[18px]">handshake</span>
               </div>
               <div>
-                <h2 className="text-sm font-bold text-slate-900">Section 2: Workshop &amp; Studio Imagery (&quot;The Alchemy of Raw Materials&quot;)</h2>
-                <p className="text-[10px] text-slate-500">Artisanal atelier showcase illustrating bespoke materials, hand tooling, and architectural sample bays.</p>
+                <h2 className="text-sm font-bold text-slate-900">Section 2: A Fresh Start, Focused on Your Facility</h2>
+                <p className="text-[10px] text-slate-500">Edit the commitment heading, introduction, service highlights, and call to action.</p>
               </div>
             </div>
-            <span className="bg-teal-50 text-teal-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Atelier Feature</span>
+            <span className="bg-teal-50 text-teal-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Our Commitment</span>
           </div>
 
-          <div className="p-6 flex gap-8">
-            <div className="w-1/2 flex flex-col gap-2">
-              <div className="w-full aspect-[4/3] bg-slate-200 rounded-lg overflow-hidden flex flex-col items-center justify-center text-slate-400 relative">
-                {workshopImage ? <img src={workshopImage} alt="Workshop image preview" className={`w-full h-full ${cropWorkshop ? 'object-cover scale-110' : 'object-cover'}`} /> : <span className="font-bold text-xs">No workshop image selected</span>}
-                <div className="absolute bottom-3 left-3 bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded shadow">Workshop Bench 04 - Fine Joinery</div>
+          <div className="p-6 space-y-6">
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Eyebrow</label>
+                <input name="commitmentEyebrow" type="text" defaultValue="Our Commitment" className="w-full text-sm font-medium bg-slate-50 border border-slate-100 rounded px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
               </div>
-              <input ref={workshopInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleImageSelection(event, setWorkshopImage)} />
-              <div className="flex items-center gap-2 mt-2">
-                <button type="button" onClick={() => workshopInputRef.current?.click()} className="flex-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold py-2 rounded flex items-center justify-center gap-2 transition-colors">
-                  <span className="material-symbols-outlined text-[14px]">sync</span> Replace Image Asset
-                </button>
-                <button type="button" onClick={() => setCropWorkshop((cropped) => !cropped)} className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 px-4 py-2 text-xs font-semibold rounded flex items-center justify-center transition-colors">
-                  {cropWorkshop ? 'Reset Frame' : 'Crop & Frame'}
-                </button>
-              </div>
-            </div>
-
-            <div className="w-1/2 space-y-5">
               <div>
                 <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Section Heading</label>
-                <input name="workshopHeading" type="text" className="w-full text-sm font-medium bg-slate-50 border border-slate-100 rounded px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" defaultValue="The Alchemy of Raw Materials" />
+                <input name="commitmentHeading" type="text" defaultValue="A Fresh Start, Focused on Your Facility" className="w-full text-sm font-medium bg-slate-50 border border-slate-100 rounded px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
               </div>
-
-              <div>
-                <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Curatorial Narrative</label>
-                <textarea name="workshopNarrative" className="w-full h-28 p-3 text-sm text-slate-800 bg-slate-50 border border-slate-100 rounded focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none leading-relaxed" defaultValue="Our in-house fabrication studio brings centuries of artisanal technique into harmony with contemporary engineering. From fluted Calacatta marble to centuries-old European smoked oak, each raw material is rigorously selected, seasoned, and hand-finished on our bench to achieve unmatched tactile gravity."></textarea>
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Introduction</label>
+                <textarea name="commitmentNarrative" rows="3" defaultValue="As a new company, we are focused on earning your trust through attentive service, cleaning plans shaped around your needs, and clear communication from the start." className="w-full p-3 text-sm text-slate-800 bg-slate-50 border border-slate-100 rounded focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-y leading-relaxed" />
               </div>
-
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {commitments.map((commitment, index) => (
+                <div key={index} className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <p className="text-xs font-semibold text-slate-500">Highlight {index + 1}</p>
+                  <div>
+                    <label htmlFor={`commitment-title-${index}`} className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Title</label>
+                    <input id={`commitment-title-${index}`} type="text" value={commitment.title} onChange={(event) => setCommitments((items) => items.map((item, i) => i === index ? { ...item, title: event.target.value } : item))} className="w-full text-sm font-medium bg-white border border-slate-200 rounded px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
+                  </div>
+                  <div>
+                    <label htmlFor={`commitment-description-${index}`} className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Description</label>
+                    <textarea id={`commitment-description-${index}`} rows="4" value={commitment.description} onChange={(event) => setCommitments((items) => items.map((item, i) => i === index ? { ...item, description: event.target.value } : item))} className="w-full p-3 text-sm text-slate-800 bg-white border border-slate-200 rounded focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-y leading-relaxed" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <div className="flex justify-between items-end mb-1">
-                  <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block">Material & Craft Tags</label>
-                  <span className="text-[10px] text-slate-400">Tags shown in public pill group</span>
-                </div>
-                <div className="w-full bg-slate-50 border border-slate-100 rounded p-2 flex flex-wrap gap-2">
-                  {tags.map((tag) => <span key={tag} className="bg-white border border-slate-200 text-slate-700 text-[11px] font-semibold px-2 py-1 rounded flex items-center gap-1.5 shadow-sm">{tag}<button type="button" onClick={() => setTags((items) => items.filter((item) => item !== tag))} aria-label={`Remove ${tag}`} className="material-symbols-outlined text-[12px] hover:text-rose-500 ml-1">close</button></span>)}
-                  <input type="text" placeholder="+ Add material tag..." onKeyDown={(event) => addChip(event, setTags)} className="bg-transparent text-[11px] outline-none min-w-[120px] ml-1 mt-1" />
-                </div>
+                <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Footer Message</label>
+                <input name="commitmentFooter" type="text" defaultValue="Looking for a cleaning plan that works for your facility?" className="w-full text-sm font-medium bg-slate-50 border border-slate-100 rounded px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Call-to-Action Button</label>
+                <input name="commitmentCta" type="text" defaultValue="Discuss Your Cleaning Needs" className="w-full text-sm font-medium bg-slate-50 border border-slate-100 rounded px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Section 3 */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <div className="flex items-center gap-3">
@@ -402,7 +388,7 @@ export default function AboutUsCms() {
                     <td className="px-4 py-4 text-xs text-slate-600 leading-relaxed max-w-sm">{milestone.details}</td>
                     <td className="px-4 py-4 w-24 text-right space-x-2 text-slate-400">
                       <button type="button" onClick={() => editMilestone(index)} aria-label={`Edit ${milestone.title}`} className="material-symbols-outlined text-[16px] hover:text-indigo-600 transition-colors">edit</button>
-                      <button type="button" onClick={() => setMilestones((items) => items.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Delete ${milestone.title}`} className="material-symbols-outlined text-[16px] hover:text-rose-500 transition-colors">delete</button>
+                      <button type="button" onClick={() => setMilestones((items) => items.filter((_, i) => i !== index))} aria-label={`Delete ${milestone.title}`} className="material-symbols-outlined text-[16px] hover:text-rose-500 transition-colors">delete</button>
                     </td>
                   </tr>
                 ))}
@@ -411,7 +397,6 @@ export default function AboutUsCms() {
           </div>
         </div>
 
-        {/* Section 4 */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <div className="flex items-center gap-3">
@@ -420,7 +405,7 @@ export default function AboutUsCms() {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-900">Section 4: Curated Architectural Project Gallery</h2>
-                <p className="text-[10px] text-slate-500">Manage the featured four-slot portfolio grid displaying craftsmanship highlights on the public landing.</p>
+                <p className="text-[10px] text-slate-500">Manage the featured four-slot portfolio grid.</p>
               </div>
             </div>
             <div className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5">
@@ -440,16 +425,16 @@ export default function AboutUsCms() {
                       <span className="bg-white text-slate-900 text-[10px] font-bold px-3 py-1.5 rounded shadow-lg">Change Image</span>
                     </button>
                     <div className="absolute top-2 left-2 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow pointer-events-none">Slot {String(index + 1).padStart(2, '0')}</div>
-                    <input ref={(element) => { galleryInputRefs.current[index] = element; }} type="file" accept="image/*" className="hidden" onChange={(event) => handleGallerySelection(index, event)} />
+                    <input ref={(el) => { galleryInputRefs.current[index] = el; }} type="file" accept="image/*" className="hidden" onChange={(event) => handleGallerySelection(index, event)} />
                   </div>
                   <div className="p-3 space-y-3 flex-1">
                     <div>
-                      <label className="text-[9px] font-bold tracking-wider text-slate-400 uppercase block mb-1" htmlFor={`gallery-title-${index}`}>Project Title</label>
-                      <input id={`gallery-title-${index}`} name={`galleryTitle${index + 1}`} type="text" className="w-full text-xs font-semibold bg-white border border-slate-200 rounded px-2 py-1 text-slate-900" value={project.title} onChange={(event) => setGallery((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))} />
+                      <label className="text-[9px] font-bold tracking-wider text-slate-400 uppercase block mb-1">Project Title</label>
+                      <input type="text" className="w-full text-xs font-semibold bg-white border border-slate-200 rounded px-2 py-1 text-slate-900" value={project.title} onChange={(event) => setGallery((items) => items.map((item, i) => i === index ? { ...item, title: event.target.value } : item))} />
                     </div>
                     <div>
-                      <label className="text-[9px] font-bold tracking-wider text-slate-400 uppercase block mb-1" htmlFor={`gallery-category-${index}`}>Category</label>
-                      <select id={`gallery-category-${index}`} name={`galleryCategory${index + 1}`} className="w-full text-xs font-semibold bg-white border border-slate-200 rounded px-2 py-1 text-slate-900" value={project.category} onChange={(event) => setGallery((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, category: event.target.value } : item))}>
+                      <label className="text-[9px] font-bold tracking-wider text-slate-400 uppercase block mb-1">Category</label>
+                      <select className="w-full text-xs font-semibold bg-white border border-slate-200 rounded px-2 py-1 text-slate-900" value={project.category} onChange={(event) => setGallery((items) => items.map((item, i) => i === index ? { ...item, category: event.target.value } : item))}>
                         <option>Culinary Architecture</option>
                         <option>Stonework & Wellness</option>
                         <option>Private Residence</option>
@@ -458,23 +443,16 @@ export default function AboutUsCms() {
                   </div>
                   <div className="px-3 py-2 bg-slate-100 border-t border-slate-200 flex justify-between items-center text-slate-500">
                     <button type="button" onClick={() => galleryInputRefs.current[index]?.click()} className="text-[10px] font-bold flex items-center gap-1 hover:text-indigo-600 transition-colors"><span className="material-symbols-outlined text-[14px]">sync</span> Replace</button>
-                    <button type="button" onClick={() => setGallery((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, src: '' } : item))} aria-label={`Remove gallery image ${index + 1}`} className="material-symbols-outlined text-[14px] hover:text-rose-500 transition-colors">delete</button>
+                    <button type="button" onClick={() => { setGallery((items) => items.map((item, i) => i === index ? { ...item, src: '' } : item)); setGalleryFiles((f) => { const u = [...f]; u[index] = null; return u; }); }} aria-label={`Remove gallery image ${index + 1}`} className="material-symbols-outlined text-[14px] hover:text-rose-500 transition-colors">delete</button>
                   </div>
                 </div>
               ))}
             </div>
-
-            <input type="file" accept="image/*" multiple className="hidden" id="gallery-upload" onChange={(event) => { handleGalleryFiles(event.target.files); event.target.value = ''; }} />
-            <button type="button" onClick={() => document.getElementById('gallery-upload')?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); handleGalleryFiles(event.dataTransfer.files); }} className="w-full bg-indigo-50/50 border-2 border-dashed border-indigo-200 rounded-xl py-8 flex flex-col items-center justify-center text-slate-500 cursor-pointer hover:bg-indigo-50 transition-colors">
-              <span className="material-symbols-outlined text-indigo-500 text-[24px] mb-2">cloud_upload</span>
-              <p className="text-sm font-bold text-slate-800">+ Drag and drop new project photos here (PNG, JPG up to 20MB)</p>
-              <p className="text-[10px] mt-1">High-resolution architectural photography with aspect ratio 16:10 or 3:2 recommended</p>
-            </button>
           </div>
         </div>
 
         <div className="flex items-center justify-between text-xs text-slate-400 py-4">
-          <span className="flex items-center gap-1 text-emerald-600 font-semibold"><span className="material-symbols-outlined text-[14px]">check_circle</span> All edits are validated against public accessibility & responsive guidelines.</span>
+          <span className="flex items-center gap-1 text-emerald-600 font-semibold"><span className="material-symbols-outlined text-[14px]">check_circle</span> Images uploaded to Cloudinary. All edits are validated.</span>
           <div className="flex items-center gap-3">
             <button type="button" onClick={discardChanges} className="text-slate-500 hover:text-slate-900 font-semibold">Discard</button>
             <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white font-bold rounded shadow-sm transition-colors disabled:opacity-60 flex items-center gap-2">
@@ -482,29 +460,14 @@ export default function AboutUsCms() {
             </button>
           </div>
         </div>
-
       </div>
+
       {milestoneDraft && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setMilestoneDraft(null);
-              setMilestoneError('');
-            }
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="milestone-dialog-title"
-            className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) { setMilestoneDraft(null); setMilestoneError(''); } }}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h2 id="milestone-dialog-title" className="text-lg font-bold text-slate-900">
-                  {milestoneDraft.index === null ? 'Add milestone' : 'Edit milestone'}
-                </h2>
+                <h2 className="text-lg font-bold text-slate-900">{milestoneDraft.index === null ? 'Add milestone' : 'Edit milestone'}</h2>
                 <p className="mt-1 text-sm text-slate-500">Enter the timeline year, title, and details.</p>
               </div>
               <button type="button" onClick={() => { setMilestoneDraft(null); setMilestoneError(''); }} aria-label="Close dialog" className="material-symbols-outlined text-slate-400 hover:text-slate-700">close</button>
@@ -512,35 +475,15 @@ export default function AboutUsCms() {
             <div className="space-y-4">
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold text-slate-600">Year</span>
-                <input
-                  autoFocus
-                  required
-                  type="text"
-                  inputMode="numeric"
-                  value={milestoneDraft.year}
-                  onChange={(event) => { setMilestoneDraft((draft) => ({ ...draft, year: event.target.value })); setMilestoneError(''); }}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                />
+                <input autoFocus required type="text" inputMode="numeric" value={milestoneDraft.year} onChange={(event) => { setMilestoneDraft((d) => ({ ...d, year: event.target.value })); setMilestoneError(''); }} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold text-slate-600">Milestone title</span>
-                <input
-                  required
-                  type="text"
-                  value={milestoneDraft.title}
-                  onChange={(event) => { setMilestoneDraft((draft) => ({ ...draft, title: event.target.value })); setMilestoneError(''); }}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                />
+                <input required type="text" value={milestoneDraft.title} onChange={(event) => { setMilestoneDraft((d) => ({ ...d, title: event.target.value })); setMilestoneError(''); }} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold text-slate-600">Chronicle details</span>
-                <textarea
-                  required
-                  rows={4}
-                  value={milestoneDraft.details}
-                  onChange={(event) => { setMilestoneDraft((draft) => ({ ...draft, details: event.target.value })); setMilestoneError(''); }}
-                  className="w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                />
+                <textarea required rows={4} value={milestoneDraft.details} onChange={(event) => { setMilestoneDraft((d) => ({ ...d, details: event.target.value })); setMilestoneError(''); }} className="w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
               </label>
             </div>
             {milestoneError && <p role="alert" className="mt-3 text-sm text-rose-600">{milestoneError}</p>}

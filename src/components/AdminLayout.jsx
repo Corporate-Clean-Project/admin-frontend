@@ -1,15 +1,17 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import useAuthStore from '../stores/authStore';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
-  { to: '/inquiries', label: 'Inquiries', icon: 'forum', badge: '12' },
+  { to: '/inquiries', label: 'Inquiries', icon: 'forum' },
   { to: '/content/about-us', label: 'About Us CMS', icon: 'edit_document' },
-  { to: '/team', label: 'Invite Team', icon: 'group', badgeText: 'ADMIN' },
+  { to: '/reviews', label: 'Reviews', icon: 'reviews' },
+  { to: '/team', label: 'Team', icon: 'group', badgeText: 'ADMIN' },
 ];
 
 export default function AdminLayout() {
-  const { user, logout } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -26,12 +28,12 @@ export default function AdminLayout() {
               T
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-slate-900 leading-tight">Top Pristine</span>
+              <span className="font-bold text-slate-900 leading-tight">Pristine</span>
               <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Admin Portal</span>
             </div>
           </div>
         </div>
-        
+
         <div className="px-6 py-2">
           <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2">Navigation</p>
         </div>
@@ -43,10 +45,9 @@ export default function AdminLayout() {
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center justify-between px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-indigo-700 text-white'
-                    : 'text-slate-600 hover:bg-slate-50'
+                `flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
+                  ? 'bg-indigo-700 text-white'
+                  : 'text-slate-600 hover:bg-slate-50'
                 }`
               }
             >
@@ -70,12 +71,12 @@ export default function AdminLayout() {
 
         <div className="p-4 mt-auto">
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" onClick={handleLogout}>
-            <div className="w-10 h-10 bg-slate-300 rounded overflow-hidden flex items-center justify-center text-xs text-slate-600 font-bold uppercase">
-              img
+            <div className="w-10 h-10 bg-indigo-100 text-indigo-700 rounded overflow-hidden flex items-center justify-center text-xs font-bold uppercase">
+              {user?.name ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'AD'}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-bold text-slate-900 truncate">{user?.name || 'Julian Vance'}</p>
-              <p className="text-[11px] text-slate-500 truncate">Master Craftsman</p>
+              <p className="text-sm font-bold text-slate-900 truncate">{user?.name || 'Admin'}</p>
+              <p className="text-[11px] text-slate-500 truncate">{user?.email || ''}</p>
             </div>
             <span className="material-symbols-outlined text-slate-400 text-sm">logout</span>
           </div>
