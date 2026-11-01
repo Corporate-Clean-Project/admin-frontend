@@ -191,7 +191,7 @@ export default function Team() {
       )}
 
       {!loadingUsers && (
-        <div className={`grid items-start gap-6 ${canInviteUsers || canResetPasswords ? 'xl:grid-cols-[minmax(0,1.7fr)_minmax(340px,0.9fr)]' : 'grid-cols-1'}`}>
+        <div className={`grid min-w-0 items-start gap-6 ${canInviteUsers || canResetPasswords ? 'xl:grid-cols-[minmax(0,1.7fr)_minmax(0,0.9fr)]' : 'grid-cols-1'}`}>
           <section className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
               <div>

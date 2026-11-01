@@ -122,14 +122,14 @@ export default function Inquiries() {
 
   const selected = selectedInquiry;
   return (
-    <div className="inquiries-page p-8 h-screen flex flex-col font-sans bg-slate-50 overflow-hidden">
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Inquiries & Client Communications</h1>
+    <div className="inquiries-page flex min-h-screen flex-col overflow-visible bg-slate-50 p-4 font-sans sm:p-6 xl:h-screen xl:overflow-hidden xl:p-8">
+      <div className="mb-6 flex items-center gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Inquiries & Client Communications</h1>
       </div>
       {(error || actionError) && <p role="alert" className="mb-4 rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-700">{actionError || error}</p>}
 
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <div className="flex flex-1 min-w-[300px] gap-2 rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-sm">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-sm">
           {[
             { key: 'all', label: 'All Inquiries' },
             { key: 'new', label: 'New' },
@@ -141,7 +141,7 @@ export default function Inquiries() {
               key={tab.key}
               type="button"
               onClick={() => setActiveFilter(tab.key)}
-              className={`flex-1 rounded-lg px-4 py-2.5 text-xs transition-all duration-150 flex items-center justify-center gap-1 leading-tight ${activeFilter === tab.key ? 'bg-indigo-700 text-white shadow-sm font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'}`}
+              className={`flex min-w-max flex-1 items-center justify-center gap-1 rounded-lg px-3 py-2.5 text-xs leading-tight transition-all duration-150 sm:px-4 ${activeFilter === tab.key ? 'bg-indigo-700 text-white shadow-sm font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'}`}
             >
               {tab.label}
             </button>
@@ -153,13 +153,13 @@ export default function Inquiries() {
         <div className="flex items-center justify-center py-20 text-sm text-slate-500">Loading inquiries…</div>
       )}
 
-      <div className="flex gap-6 flex-1 min-h-0">
-        <div className="w-1/3 flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex-shrink-0">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 xl:flex-row xl:gap-6">
+        <div className="flex max-h-80 w-full flex-shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm xl:max-h-none xl:w-1/3">
           <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
             <h2 className="text-[11px] font-bold tracking-wider text-slate-500 uppercase">Conversations ({total})</h2>
           </div>
           
-          <div className="hide-scrollbar flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="hide-scrollbar flex-1 space-y-4 overflow-y-auto p-3 sm:p-4">
             {inquiries.map((inquiry) => (
               <div
                 key={inquiry._id}
@@ -200,15 +200,15 @@ export default function Inquiries() {
         </div>
 
         {selected && (
-          <div className="hide-scrollbar flex-1 min-h-0 flex flex-col bg-slate-50 overflow-y-auto space-y-6 pb-8">
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-4">
+          <div className="hide-scrollbar flex min-h-[65vh] flex-1 flex-col space-y-4 overflow-y-visible bg-slate-50 pb-8 xl:min-h-0 xl:space-y-6 xl:overflow-y-auto">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+              <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row">
+                <div className="flex min-w-0 items-center gap-4">
                   <div className="w-16 h-16 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xl">{getInitials(selected.fullName)}</div>
                   <div>
                     <h2 className="text-2xl font-bold text-slate-900">{selected.fullName}</h2>
-                    <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
-                      <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">mail</span> {selected.email}</span>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                      <span className="flex min-w-0 items-center gap-1 break-all"><span className="material-symbols-outlined text-[14px]">mail</span> {selected.email}</span>
                       {selected.phone && (
                         <>
                           <span>•</span>
@@ -240,7 +240,7 @@ export default function Inquiries() {
                 {!canManageInquiries && <span className="text-xs font-semibold text-slate-500">Status: {statusMap[selected.status]?.label || selected.status}</span>}
               </div>
               
-              <div className="grid grid-cols-2 gap-8 pt-4 border-t border-slate-100">
+              <div className="grid grid-cols-1 gap-5 border-t border-slate-100 pt-4 sm:grid-cols-2 sm:gap-8">
                 <div>
                   <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase mb-1">Type</p>
                   <p className="text-sm font-bold text-slate-900 capitalize">{selected.inquiryType || selected.type}</p>
@@ -257,8 +257,8 @@ export default function Inquiries() {
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <span className="material-symbols-outlined text-indigo-600 text-[18px]">mark_email_unread</span> Original Message
                 </h3>

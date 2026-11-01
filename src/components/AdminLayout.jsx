@@ -20,9 +20,9 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans">
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
-        <div className="h-20 flex items-center px-6">
+    <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 lg:h-screen lg:flex-row">
+      <aside className="flex w-full shrink-0 flex-col border-b border-slate-200 bg-white lg:h-screen lg:w-64 lg:border-b-0 lg:border-r">
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:h-20">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-indigo-700 text-white rounded font-bold flex items-center justify-center font-serif text-xl">
               T
@@ -32,20 +32,28 @@ export default function AdminLayout() {
               <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Admin Portal</span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+            aria-label="Log out"
+          >
+            <span className="material-symbols-outlined">logout</span>
+          </button>
         </div>
 
-        <div className="px-6 py-2">
-          <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-2">Navigation</p>
+        <div className="hidden px-6 py-2 lg:block">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Navigation</p>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-1 lg:flex-col lg:space-y-1 lg:overflow-visible lg:px-4 lg:pb-0">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
+                `flex shrink-0 items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors lg:w-full ${isActive
                   ? 'bg-indigo-700 text-white'
                   : 'text-slate-600 hover:bg-slate-50'
                 }`
@@ -69,7 +77,7 @@ export default function AdminLayout() {
           ))}
         </nav>
 
-        <div className="p-4 mt-auto">
+        <div className="mt-auto hidden p-4 lg:block">
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors" onClick={handleLogout}>
             <div className="w-10 h-10 bg-indigo-100 text-indigo-700 rounded overflow-hidden flex items-center justify-center text-xs font-bold uppercase">
               {user?.name ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2) : 'AD'}
@@ -83,8 +91,8 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
+      <main className="min-w-0 flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-7xl">
           <Outlet />
         </div>
       </main>

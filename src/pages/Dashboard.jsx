@@ -32,9 +32,9 @@ export default function Dashboard() {
   }, [fetchStats]);
 
   return (
-    <div className="p-8 space-y-8 bg-slate-50 min-h-screen font-sans">
+    <div className="min-h-screen space-y-6 bg-slate-50 p-4 font-sans sm:space-y-8 sm:p-6 lg:p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Executive Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Executive Dashboard</h1>
       </div>
       {error && <p role="alert" className="rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-700">{error}</p>}
 
@@ -44,7 +44,7 @@ export default function Dashboard() {
 
       {stats && (
         <>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
             <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">Total Inquiries</h2>
@@ -105,8 +105,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-6">
-            <div className="col-span-2 space-y-6">
+          <div className="grid grid-cols-1 gap-6 2xl:grid-cols-3">
+            <div className="space-y-6 2xl:col-span-2">
               <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">

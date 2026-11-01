@@ -195,18 +195,18 @@ export default function AboutUsCms() {
   };
 
   if (!loaded) {
-    return <div className="p-8 flex items-center justify-center min-h-screen text-sm text-slate-500">Loading content…</div>;
+    return <div className="flex min-h-screen items-center justify-center p-4 text-sm text-slate-500 sm:p-6 lg:p-8">Loading content…</div>;
   }
 
   return (
-    <form ref={formRef} onSubmit={saveChanges} className="p-8 font-sans bg-slate-50 min-h-screen">
-      <div className="flex items-center justify-between mb-8">
+    <form ref={formRef} onSubmit={saveChanges} className="min-h-screen bg-slate-50 p-4 font-sans sm:p-6 lg:p-8">
+      <div className="mb-8 flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 opacity-0 hidden">About Us CMS</h1>
-        <div className="flex items-center gap-4">
-          <button type="button" onClick={discardChanges} className="px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <button type="button" onClick={discardChanges} className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
             <span className="material-symbols-outlined text-[16px]">refresh</span> Discard Changes
           </button>
-          <button type="submit" disabled={saving} className="px-5 py-2 text-sm font-bold text-white bg-indigo-700 rounded-lg shadow-sm hover:bg-indigo-800 disabled:opacity-60 flex items-center gap-2 transition-colors">
+          <button type="submit" disabled={saving} className="flex items-center justify-center gap-2 rounded-lg bg-indigo-700 px-5 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-800 disabled:opacity-60">
             <span className="material-symbols-outlined text-[16px]">save</span> {saving ? 'Publishing…' : 'Save & Publish Changes'}
           </button>
         </div>
@@ -216,8 +216,8 @@ export default function AboutUsCms() {
 
       <div className="max-w-full mx-auto space-y-8 pb-12">
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
               <div className="w-8 h-8 rounded bg-indigo-600 text-white flex items-center justify-center shadow-inner">
                 <span className="material-symbols-outlined text-[18px]">person</span>
               </div>
@@ -229,8 +229,8 @@ export default function AboutUsCms() {
             <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Primary Profile</span>
           </div>
 
-          <div className="p-6 flex gap-8">
-            <div className="w-1/3 flex flex-col gap-2">
+          <div className="flex flex-col gap-6 p-4 sm:p-6 lg:flex-row lg:gap-8">
+            <div className="flex w-full flex-col gap-2 lg:w-1/3">
               <p className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">Executive Headshot</p>
               <div className="w-full aspect-[3/4] bg-slate-200 rounded-lg overflow-hidden flex flex-col items-center justify-center text-slate-400 relative">
                 {portrait ? <img src={portrait} alt="Founder portrait preview" className="w-full h-full object-cover" /> : <span className="font-bold text-xs">No portrait selected</span>}
@@ -247,7 +247,7 @@ export default function AboutUsCms() {
             </div>
 
             <div className="flex-1 space-y-5">
-              <div className="flex gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row">
                 <div className="flex-1">
                   <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Founder Full Name</label>
                   <input name="founderName" type="text" className="w-full text-sm font-medium bg-slate-50 border border-slate-100 rounded px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" defaultValue="Julian Vance" />
@@ -276,7 +276,7 @@ export default function AboutUsCms() {
 
               <div>
                 <label className="text-[10px] font-bold tracking-wider text-slate-500 uppercase block mb-1">Key Performance Stats (Public Badges)</label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="bg-slate-50 border border-slate-100 rounded p-2">
                     <p className="text-[9px] font-bold uppercase text-slate-400 mb-1">Numeric Stat 1</p>
                     <input name="statOne" type="text" className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-sm font-bold text-slate-900 text-center" defaultValue="15+ Years Mastery" />
@@ -296,8 +296,8 @@ export default function AboutUsCms() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
               <div className="w-8 h-8 rounded bg-teal-600 text-white flex items-center justify-center shadow-inner">
                 <span className="material-symbols-outlined text-[18px]">handshake</span>
               </div>
@@ -353,8 +353,8 @@ export default function AboutUsCms() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
               <div className="w-8 h-8 rounded bg-indigo-700 text-white flex items-center justify-center shadow-inner">
                 <span className="material-symbols-outlined text-[18px]">timeline</span>
               </div>
@@ -368,8 +368,8 @@ export default function AboutUsCms() {
             </button>
           </div>
 
-          <div className="p-4">
-            <table className="w-full text-left">
+          <div className="overflow-x-auto p-3 sm:p-4">
+            <table className="w-full min-w-[640px] text-left">
               <thead>
                 <tr className="border-b border-slate-200">
                   <th className="px-4 py-2 text-[9px] font-bold uppercase text-slate-400 tracking-wider">Order</th>
@@ -398,8 +398,8 @@ export default function AboutUsCms() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
               <div className="w-8 h-8 rounded bg-sky-100 text-sky-600 flex items-center justify-center shadow-inner border border-sky-200">
                 <span className="material-symbols-outlined text-[18px]">photo_library</span>
               </div>
@@ -413,7 +413,7 @@ export default function AboutUsCms() {
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
               {gallery.map((project, index) => (
                 <div key={index} className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden shadow-sm flex flex-col">

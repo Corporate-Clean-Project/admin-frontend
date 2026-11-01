@@ -6,6 +6,26 @@ body {
   font-family: 'Open Sans', 'Century Gothic', sans-serif;
 }
 
+#root {
+  min-height: 100vh;
+}
+
+@media (max-width: 640px) {
+  body {
+    min-width: 320px;
+  }
+
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
+  .inquiries-page {
+    height: auto;
+  }
+}
+
 h1, h2, h3, .font-display {
   font-family: 'Open Sans', 'Century Gothic', sans-serif;
 }
